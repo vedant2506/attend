@@ -1,16 +1,22 @@
+// *** STEP 1: ADD YOUR SUPABASE DETAILS HERE ***
+const SUPABASE_URL = 'https://hrshatipygqtlqtjkozm.supabase.co';      // <-- PASTE YOUR URL HERE
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhyc2hhdGlweWdxdGxxdGprb3ptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2Njc5MDIsImV4cCI6MjA3NTI0MzkwMn0.KKzsKiBOO9AlQqX-ickVMBA9qXexF-cgiVeMVFcF26M'; // <-- PASTE YOUR ANON KEY HERE
+
+// *** STEP 2: INITIALIZE THE SUPABASE CLIENT ***
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+console.log('Supabase Initialized!');
+
+
 // --- DOM Elements ---
-// Shared Views
+// (This section is unchanged)
 const homeView = document.getElementById('home-view');
 const teacherView = document.getElementById('teacher-view');
 const studentView = document.getElementById('student-view');
 const summaryView = document.getElementById('summary-view');
-
-// Buttons
 const teacherBtn = document.getElementById('teacher-btn');
 const studentBtn = document.getElementById('student-btn');
 const backBtns = document.querySelectorAll('.back-btn');
-
-// Teacher View
 const startSessionBtn = document.getElementById('start-session-btn');
 const qrcodeContainer = document.getElementById('qrcode-container');
 const qrcodeEl = document.getElementById('qrcode');
@@ -20,8 +26,6 @@ const alphanumericContainer = document.getElementById('alphanumeric-container');
 const alphanumericCodeEl = document.getElementById('alphanumeric-code');
 const alphanumericTimerEl = document.getElementById('alphanumeric-timer');
 const endSessionBtn = document.getElementById('end-session-btn');
-
-// Student View
 const studentLoginView = document.getElementById('student-login-view');
 const studentRollInput = document.getElementById('student-roll-input');
 const studentLoginBtn = document.getElementById('student-login-btn');
@@ -35,32 +39,32 @@ const manualEntryLink = document.getElementById('manual-entry-link');
 const manualEntryContainer = document.getElementById('manual-entry-container');
 const manualCodeInput = document.getElementById('manual-code-input');
 const submitCodeBtn = document.getElementById('submit-code-btn');
-
-// Summary View
 const newSessionBtn = document.getElementById('new-session-btn');
 const copyReportBtn = document.getElementById('copy-report-btn');
+
 
 // --- State Variables & Mock Database ---
 let sessionInterval;
 let qr;
 let currentAlphanumericCode = '';
+// *** NEW: The session ID is now critical for tracking live sessions ***
+let currentSessionId = '';
 
-// *** LIVE TRIAL CONFIGURATION ***
 const classRoster = [];
 for (let i = 1; i <= 78; i++) {
     classRoster.push({ studentId: `roll_${i}`, rollNo: i.toString() });
 }
-
 const teacherInfo = {
-    subject: 'Live Trial Lecture' // You can change this
+    subject: 'Live Trial Lecture'
 };
 
+
 // --- View Navigation ---
+// (This section is unchanged)
 function showView(view) {
     [homeView, teacherView, studentView, summaryView].forEach(v => v.classList.remove('active'));
     view.classList.add('active');
 }
-
 teacherBtn.addEventListener('click', () => showView(teacherView));
 studentBtn.addEventListener('click', () => showView(studentView));
 backBtns.forEach(btn => {
@@ -71,13 +75,27 @@ backBtns.forEach(btn => {
     });
 });
 newSessionBtn.addEventListener('click', () => {
-    clearSessionData();
+    // We don't need clearSessionData anymore as the teacher starts a new session
     showView(teacherView);
 });
 
 
 // --- Teacher Logic ---
-startSessionBtn.addEventListener('click', () => {
+// *** MODIFIED: This function is now async and clears the database ***
+startSessionBtn.addEventListener('click', async () => {
+    currentSessionId = `session_${Date.now()}`;
+    console.log(`Starting new session with ID: ${currentSessionId}`);
+
+    // For the demo, we clear ALL previous records to start fresh.
+    // In a real app, you would not do this.
+    const { error } = await db.from('records').delete().neq('student_id', 'never_match_this_string');
+    if (error) {
+        console.error('Error clearing old records:', error);
+        alert('Could not start a new session. Check the console.');
+        return;
+    }
+    console.log('Previous session records cleared from the database.');
+
     startSessionBtn.style.display = 'none';
     fallbackBtn.style.display = 'block';
     endSessionBtn.style.display = 'block';
@@ -94,27 +112,31 @@ fallbackBtn.addEventListener('click', () => {
     sessionInterval = setInterval(generateNumericCode, 30000);
 });
 
-endSessionBtn.addEventListener('click', showSessionSummary);
+endSessionBtn.addEventListener('click', showSessionSummary); // This now has a new implementation
 copyReportBtn.addEventListener('click', copyAbsentListToClipboard);
 
-function generateDynamicQrCode() { /* ... unchanged ... */ }
-function generateNumericCode() { /* ... unchanged ... */ }
-function startTimer(duration, element, text) { /* ... unchanged ... */ }
-
-function stopSession() {
-    clearInterval(sessionInterval);
-    startSessionBtn.style.display = 'block';
-    fallbackBtn.style.display = 'none';
-    endSessionBtn.style.display = 'none';
-    qrcodeContainer.style.display = 'none';
-    alphanumericContainer.style.display = 'none';
-}
-
-function showSessionSummary() {
+// *** MODIFIED: This function now fetches live data from Supabase ***
+async function showSessionSummary() {
     stopSession();
-    const presentStudentIds = attendanceDB.map(record => record.studentId);
+    console.log(`Fetching records for session: ${currentSessionId}`);
+    
+    // Fetch all present student records for this session from the live database
+    const { data: presentRecords, error } = await db
+        .from('records')
+        .select('student_id')
+        .eq('session_id', currentSessionId);
+
+    if (error) {
+        console.error('Error fetching summary:', error);
+        alert('Could not fetch the session summary. Please check the console.');
+        return;
+    }
+
+    const presentStudentIds = presentRecords.map(record => record.student_id);
     const absentStudents = classRoster.filter(student => !presentStudentIds.includes(student.studentId));
     const absentRollNos = absentStudents.map(student => student.rollNo).join(', ') || 'None';
+
+    // The rest of this function is the same as before
     const now = new Date();
     const formattedDate = now.toLocaleDateString('en-GB');
     const formattedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -127,27 +149,17 @@ function showSessionSummary() {
     showView(summaryView);
 }
 
-function copyAbsentListToClipboard() { /* ... unchanged ... */ }
-
-function clearSessionData() {
-    localStorage.removeItem('attendanceRecords');
-    attendanceDB.length = 0;
-    console.log("Session data cleared for new session.");
-}
-
-// --- Device Fingerprinting Logic ---
-async function getDeviceFingerprint() { /* ... unchanged ... */ }
-
 
 // --- Student Logic ---
-const attendanceDB = JSON.parse(localStorage.getItem('attendanceRecords')) || [];
+// *** REMOVED: We no longer use localStorage for attendance data ***
 
 studentLoginBtn.addEventListener('click', () => {
+    // (This function is unchanged)
     const rollNo = studentRollInput.value.trim();
     const isValid = classRoster.some(student => student.rollNo === rollNo);
 
     if (isValid) {
-        sessionStorage.setItem('loggedInStudentRoll', rollNo); // Use sessionStorage to remember for the session
+        sessionStorage.setItem('loggedInStudentRoll', rollNo);
         studentLoginView.style.display = 'none';
         studentDashboard.style.display = 'block';
         loggedInStudentEl.textContent = `Logged in as Roll No: ${rollNo}`;
@@ -156,16 +168,7 @@ studentLoginBtn.addEventListener('click', () => {
     }
 });
 
-scanBtn.addEventListener('click', startScanner);
-manualEntryLink.addEventListener('click', (e) => { e.preventDefault(); manualEntryContainer.style.display = 'block'; manualEntryLink.style.display = 'none'; });
-submitCodeBtn.addEventListener('click', () => {
-    // ... (logic from previous version is fine)
-});
-
-function startScanner() { /* ... unchanged ... */ }
-function tick() { /* ... unchanged ... */ }
-function checkForProxyAttendance(newStudentId, fingerprint) { /* ... unchanged ... */ }
-
+// *** MODIFIED: This function now sends data to and checks with Supabase ***
 async function handleScanResult(data) {
     stopScanner();
     const rollNo = sessionStorage.getItem('loggedInStudentRoll');
@@ -175,18 +178,44 @@ async function handleScanResult(data) {
     }
     const studentId = `roll_${rollNo}`;
 
-    // Check if already marked present
-    if (attendanceDB.some(rec => rec.studentId === studentId)) {
+    // Check if student is already marked present IN THE LIVE DATABASE
+    const { data: existingRecord, error: checkError } = await db.from('records')
+        .select()
+        .eq('session_id', currentSessionId)
+        .eq('student_id', studentId);
+
+    if (checkError) {
+        console.error("Error checking existing record:", checkError);
+        scanResultEl.textContent = 'A network error occurred. Please try again.';
+        scanResultEl.className = 'result-error';
+        return;
+    }
+    
+    if (existingRecord.length > 0) {
         scanResultEl.textContent = `You are already marked present, Roll No: ${rollNo}.`;
         scanResultEl.className = 'result-success';
         return;
     }
     
     const fingerprint = await getDeviceFingerprint();
-    const flag = checkForProxyAttendance(studentId, fingerprint);
-    saveAttendanceRecord({ studentId, timestamp: Date.now(), fingerprint, qrData: data });
+    const isProxy = await checkForProxyAttendance(fingerprint);
 
-    if (flag) {
+    // *** SEND THE NEW RECORD TO THE LIVE DATABASE ***
+    const { error } = await db.from('records').insert({
+        student_id: studentId,
+        roll_no: rollNo,
+        fingerprint: fingerprint,
+        session_id: currentSessionId
+    });
+
+    if (error) {
+        console.error('Error saving attendance:', error);
+        scanResultEl.textContent = 'Error saving attendance. Please try again.';
+        scanResultEl.className = 'result-error';
+        return;
+    }
+
+    if (isProxy) {
         scanResultEl.innerHTML = `<strong>Attendance Marked for Roll No: ${rollNo}.</strong><br><span style="color: #f59e0b; font-weight: bold;">Warning: Suspicious activity detected. This has been flagged.</span>`;
         scanResultEl.className = '';
     } else {
@@ -195,13 +224,27 @@ async function handleScanResult(data) {
     }
 }
 
-function stopScanner() { /* ... unchanged ... */ }
-function saveAttendanceRecord(record) {
-    attendanceDB.push(record);
-    localStorage.setItem('attendanceRecords', JSON.stringify(attendanceDB));
+// *** MODIFIED: This function now checks the live database ***
+async function checkForProxyAttendance(fingerprint) {
+    const { data, error } = await db
+        .from('records')
+        .select()
+        .eq('session_id', currentSessionId)
+        .eq('fingerprint', fingerprint);
+    
+    if (error) {
+        console.error("Proxy check error:", error);
+        return false; // Fail safe, assume not a proxy on error
+    }
+    
+    return data && data.length > 0;
 }
 
-// Re-populate unchanged functions
+
+// --- Unchanged Helper Functions ---
+scanBtn.addEventListener('click', startScanner);
+manualEntryLink.addEventListener('click', (e) => { e.preventDefault(); manualEntryContainer.style.display = 'block'; manualEntryLink.style.display = 'none'; });
+
 function generateDynamicQrCode() { const qrData = `CS101-ATTENDANCE-${Date.now()}`; qrcodeEl.innerHTML = ''; qr = new QRCode(qrcodeEl, { text: qrData, width: 256, height: 256, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H }); startTimer(15, timerEl, "New QR code in"); }
 function generateNumericCode() { const code = Math.floor(100000 + Math.random() * 900000); currentAlphanumericCode = code.toString(); alphanumericCodeEl.textContent = `${code.toString().substring(0, 3)} - ${code.toString().substring(3, 6)}`; startTimer(30, alphanumericTimerEl, "New code in"); }
 function startTimer(duration, element, text) { let timeLeft = duration; element.textContent = `${text} ${timeLeft}s...`; const timerInterval = setInterval(() => { timeLeft--; element.textContent = `${text} ${timeLeft}s...`; if (timeLeft <= 0) clearInterval(timerInterval); }, 1000); }
@@ -209,6 +252,6 @@ function copyAbsentListToClipboard() { const absentListText = document.getElemen
 async function getDeviceFingerprint() { const components = [navigator.userAgent, `${screen.width}x${screen.height}`, new Date().getTimezoneOffset(), navigator.language, navigator.hardwareConcurrency]; const data = components.join('---'); let hash = 0; for (let i = 0; i < data.length; i++) { const char = data.charCodeAt(i); hash = ((hash << 5) - hash) + char; hash |= 0; } return hash.toString(); }
 function startScanner() { scannerContainer.style.display = 'block'; scanBtn.style.display = 'none'; scanResultEl.textContent = 'Point camera at the QR code...'; scanResultEl.className = ''; navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(stream => { videoEl.srcObject = stream; videoEl.setAttribute("playsinline", true); videoEl.play(); requestAnimationFrame(tick); }).catch(err => { console.error("Camera Error:", err); scanResultEl.textContent = 'Could not access camera. Please check permissions.'; scanResultEl.className = 'result-error'; }); }
 function tick() { if (videoEl.readyState === videoEl.HAVE_ENOUGH_DATA) { const canvas = document.createElement('canvas'); canvas.width = videoEl.videoWidth; canvas.height = videoEl.videoHeight; const ctx = canvas.getContext('2d'); ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height); const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height); const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" }); if (code) { handleScanResult(code.data); return; } } requestAnimationFrame(tick); }
-function checkForProxyAttendance(newStudentId, fingerprint) { const fiveMinutesAgo = Date.now() - (5 * 60 * 1000); const recentRecords = attendanceDB.filter(record => record.timestamp > fiveMinutesAgo); return recentRecords.find(record => record.fingerprint === fingerprint && record.studentId !== newStudentId); }
 function stopScanner() { if (videoEl.srcObject) { videoEl.srcObject.getTracks().forEach(track => track.stop()); } scannerContainer.style.display = 'none'; scanBtn.style.display = 'block'; }
 submitCodeBtn.addEventListener('click', () => { const enteredCode = manualCodeInput.value.trim(); if (!enteredCode) return; console.log(`Simulating submission of manual code: ${enteredCode}`); handleScanResult(`MANUAL_CODE_SUBMISSION_${Date.now()}`); manualCodeInput.value = ''; });
+function stopSession() { clearInterval(sessionInterval); startSessionBtn.style.display = 'block'; fallbackBtn.style.display = 'none'; endSessionBtn.style.display = 'none'; qrcodeContainer.style.display = 'none'; alphanumericContainer.style.display = 'none'; }
