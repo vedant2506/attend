@@ -1,15 +1,14 @@
-// *** STEP 1: ADD YOUR SUPABASE DETAILS HERE ***
-const SUPABASE_URL = 'https://hrshatipygqtlqtjkozm.supabase.co';      // <-- PASTE YOUR URL HERE
+// --- Supabase Configuration ---
+const SUPABASE_URL = ' https://hrshatipygqtlqtjkozm.supabase.co';      // <-- PASTE YOUR URL HERE
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhyc2hhdGlweWdxdGxxdGprb3ptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2Njc5MDIsImV4cCI6MjA3NTI0MzkwMn0.KKzsKiBOO9AlQqX-ickVMBA9qXexF-cgiVeMVFcF26M'; // <-- PASTE YOUR ANON KEY HERE
 
-// *** STEP 2: INITIALIZE THE SUPABASE CLIENT ***
+// --- Initialize Supabase Client ---
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 console.log('Supabase Initialized!');
 
 
 // --- DOM Elements ---
-// (This section is unchanged)
 const homeView = document.getElementById('home-view');
 const teacherView = document.getElementById('teacher-view');
 const studentView = document.getElementById('student-view');
@@ -43,11 +42,11 @@ const newSessionBtn = document.getElementById('new-session-btn');
 const copyReportBtn = document.getElementById('copy-report-btn');
 
 
-// --- State Variables & Mock Database ---
+// --- State Variables ---
 let sessionInterval;
+let countdownInterval; // Separate interval for the countdown timer
 let qr;
 let currentAlphanumericCode = '';
-// *** NEW: The session ID is now critical for tracking live sessions ***
 let currentSessionId = '';
 
 const classRoster = [];
@@ -60,7 +59,6 @@ const teacherInfo = {
 
 
 // --- View Navigation ---
-// (This section is unchanged)
 function showView(view) {
     [homeView, teacherView, studentView, summaryView].forEach(v => v.classList.remove('active'));
     view.classList.add('active');
@@ -75,19 +73,15 @@ backBtns.forEach(btn => {
     });
 });
 newSessionBtn.addEventListener('click', () => {
-    // We don't need clearSessionData anymore as the teacher starts a new session
     showView(teacherView);
 });
 
 
 // --- Teacher Logic ---
-// *** MODIFIED: This function is now async and clears the database ***
 startSessionBtn.addEventListener('click', async () => {
     currentSessionId = `session_${Date.now()}`;
     console.log(`Starting new session with ID: ${currentSessionId}`);
 
-    // For the demo, we clear ALL previous records to start fresh.
-    // In a real app, you would not do this.
     const { error } = await db.from('records').delete().neq('student_id', 'never_match_this_string');
     if (error) {
         console.error('Error clearing old records:', error);
@@ -112,15 +106,13 @@ fallbackBtn.addEventListener('click', () => {
     sessionInterval = setInterval(generateNumericCode, 30000);
 });
 
-endSessionBtn.addEventListener('click', showSessionSummary); // This now has a new implementation
+endSessionBtn.addEventListener('click', showSessionSummary);
 copyReportBtn.addEventListener('click', copyAbsentListToClipboard);
 
-// *** MODIFIED: This function now fetches live data from Supabase ***
 async function showSessionSummary() {
     stopSession();
     console.log(`Fetching records for session: ${currentSessionId}`);
     
-    // Fetch all present student records for this session from the live database
     const { data: presentRecords, error } = await db
         .from('records')
         .select('student_id')
@@ -136,7 +128,6 @@ async function showSessionSummary() {
     const absentStudents = classRoster.filter(student => !presentStudentIds.includes(student.studentId));
     const absentRollNos = absentStudents.map(student => student.rollNo).join(', ') || 'None';
 
-    // The rest of this function is the same as before
     const now = new Date();
     const formattedDate = now.toLocaleDateString('en-GB');
     const formattedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -151,10 +142,7 @@ async function showSessionSummary() {
 
 
 // --- Student Logic ---
-// *** REMOVED: We no longer use localStorage for attendance data ***
-
 studentLoginBtn.addEventListener('click', () => {
-    // (This function is unchanged)
     const rollNo = studentRollInput.value.trim();
     const isValid = classRoster.some(student => student.rollNo === rollNo);
 
@@ -168,7 +156,6 @@ studentLoginBtn.addEventListener('click', () => {
     }
 });
 
-// *** MODIFIED: This function now sends data to and checks with Supabase ***
 async function handleScanResult(data) {
     stopScanner();
     const rollNo = sessionStorage.getItem('loggedInStudentRoll');
@@ -178,7 +165,6 @@ async function handleScanResult(data) {
     }
     const studentId = `roll_${rollNo}`;
 
-    // Check if student is already marked present IN THE LIVE DATABASE
     const { data: existingRecord, error: checkError } = await db.from('records')
         .select()
         .eq('session_id', currentSessionId)
@@ -200,7 +186,6 @@ async function handleScanResult(data) {
     const fingerprint = await getDeviceFingerprint();
     const isProxy = await checkForProxyAttendance(fingerprint);
 
-    // *** SEND THE NEW RECORD TO THE LIVE DATABASE ***
     const { error } = await db.from('records').insert({
         student_id: studentId,
         roll_no: rollNo,
@@ -224,7 +209,6 @@ async function handleScanResult(data) {
     }
 }
 
-// *** MODIFIED: This function now checks the live database ***
 async function checkForProxyAttendance(fingerprint) {
     const { data, error } = await db
         .from('records')
@@ -234,7 +218,7 @@ async function checkForProxyAttendance(fingerprint) {
     
     if (error) {
         console.error("Proxy check error:", error);
-        return false; // Fail safe, assume not a proxy on error
+        return false;
     }
     
     return data && data.length > 0;
@@ -247,11 +231,25 @@ manualEntryLink.addEventListener('click', (e) => { e.preventDefault(); manualEnt
 
 function generateDynamicQrCode() { const qrData = `CS101-ATTENDANCE-${Date.now()}`; qrcodeEl.innerHTML = ''; qr = new QRCode(qrcodeEl, { text: qrData, width: 256, height: 256, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H }); startTimer(15, timerEl, "New QR code in"); }
 function generateNumericCode() { const code = Math.floor(100000 + Math.random() * 900000); currentAlphanumericCode = code.toString(); alphanumericCodeEl.textContent = `${code.toString().substring(0, 3)} - ${code.toString().substring(3, 6)}`; startTimer(30, alphanumericTimerEl, "New code in"); }
-function startTimer(duration, element, text) { let timeLeft = duration; element.textContent = `${text} ${timeLeft}s...`; const timerInterval = setInterval(() => { timeLeft--; element.textContent = `${text} ${timeLeft}s...`; if (timeLeft <= 0) clearInterval(timerInterval); }, 1000); }
+
+function startTimer(duration, element, text) {
+    clearInterval(countdownInterval);
+    let timeLeft = duration;
+    element.textContent = `${text} ${timeLeft}s...`;
+    countdownInterval = setInterval(() => {
+        timeLeft--;
+        if (timeLeft >= 0) {
+            element.textContent = `${text} ${timeLeft}s...`;
+        } else {
+            clearInterval(countdownInterval);
+        }
+    }, 1000);
+}
+
 function copyAbsentListToClipboard() { const absentListText = document.getElementById('summary-absent-list').textContent; const reportText = `Absent Roll Numbers for ${teacherInfo.subject}:\n${absentListText}`; navigator.clipboard.writeText(reportText).then(() => alert('Absent list copied to clipboard!')).catch(err => alert('Could not copy text.')); }
 async function getDeviceFingerprint() { const components = [navigator.userAgent, `${screen.width}x${screen.height}`, new Date().getTimezoneOffset(), navigator.language, navigator.hardwareConcurrency]; const data = components.join('---'); let hash = 0; for (let i = 0; i < data.length; i++) { const char = data.charCodeAt(i); hash = ((hash << 5) - hash) + char; hash |= 0; } return hash.toString(); }
 function startScanner() { scannerContainer.style.display = 'block'; scanBtn.style.display = 'none'; scanResultEl.textContent = 'Point camera at the QR code...'; scanResultEl.className = ''; navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(stream => { videoEl.srcObject = stream; videoEl.setAttribute("playsinline", true); videoEl.play(); requestAnimationFrame(tick); }).catch(err => { console.error("Camera Error:", err); scanResultEl.textContent = 'Could not access camera. Please check permissions.'; scanResultEl.className = 'result-error'; }); }
 function tick() { if (videoEl.readyState === videoEl.HAVE_ENOUGH_DATA) { const canvas = document.createElement('canvas'); canvas.width = videoEl.videoWidth; canvas.height = videoEl.videoHeight; const ctx = canvas.getContext('2d'); ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height); const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height); const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" }); if (code) { handleScanResult(code.data); return; } } requestAnimationFrame(tick); }
 function stopScanner() { if (videoEl.srcObject) { videoEl.srcObject.getTracks().forEach(track => track.stop()); } scannerContainer.style.display = 'none'; scanBtn.style.display = 'block'; }
 submitCodeBtn.addEventListener('click', () => { const enteredCode = manualCodeInput.value.trim(); if (!enteredCode) return; console.log(`Simulating submission of manual code: ${enteredCode}`); handleScanResult(`MANUAL_CODE_SUBMISSION_${Date.now()}`); manualCodeInput.value = ''; });
-function stopSession() { clearInterval(sessionInterval); startSessionBtn.style.display = 'block'; fallbackBtn.style.display = 'none'; endSessionBtn.style.display = 'none'; qrcodeContainer.style.display = 'none'; alphanumericContainer.style.display = 'none'; }
+function stopSession() { clearInterval(sessionInterval); clearInterval(countdownInterval); startSessionBtn.style.display = 'block'; fallbackBtn.style.display = 'none'; endSessionBtn.style.display = 'none'; qrcodeContainer.style.display = 'none'; alphanumericContainer.style.display = 'none'; }
