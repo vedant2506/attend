@@ -1,0 +1,21 @@
+{
+  "name": "QuickAttend: QR Attendance System",
+  "short_name": "QuickAttend",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1877f2",
+  "description": "A modern, fast attendance system using QR codes.",
+  "icons": [
+    {
+      "src": "business.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "business.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
