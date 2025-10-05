@@ -10,6 +10,10 @@ body {
     color: #333;
 }
 
+#manual-entry-link {
+    display: none; /* Hide for the live trial */
+}
+
 .container {
     background: white;
     padding: 30px;
@@ -212,4 +216,5 @@ input[type="number"] {
 #copy-report-btn {
     background-color: #6c757d;
     margin-bottom: 10px;
+
 }
