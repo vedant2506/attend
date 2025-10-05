@@ -156,6 +156,7 @@ studentLoginBtn.addEventListener('click', () => {
     }
 });
 
+// *** COMPLETE REPLACEMENT FUNCTION ***
 async function handleScanResult(data) {
     stopScanner();
     const rollNo = sessionStorage.getItem('loggedInStudentRoll');
@@ -165,9 +166,24 @@ async function handleScanResult(data) {
     }
     const studentId = `roll_${rollNo}`;
 
+    // --- THIS IS THE NEW LOGIC ---
+    // The 'data' from the QR scan now looks like: "session_123|timestamp"
+    // We need to extract the Session ID from it.
+    const qrParts = data.split('|');
+    if (qrParts.length < 2) {
+        console.error("Invalid QR code format scanned.");
+        scanResultEl.textContent = 'Invalid or outdated QR code. Please scan again.';
+        scanResultEl.className = 'result-error';
+        return;
+    }
+    const scannedSessionId = qrParts[0];
+    // --- END OF NEW LOGIC ---
+
+
+    // Check if student is already marked present using the SCANNED session ID
     const { data: existingRecord, error: checkError } = await db.from('records')
         .select()
-        .eq('session_id', currentSessionId)
+        .eq('session_id', scannedSessionId) // Use the ID from the QR code
         .eq('student_id', studentId);
 
     if (checkError) {
@@ -184,13 +200,14 @@ async function handleScanResult(data) {
     }
     
     const fingerprint = await getDeviceFingerprint();
-    const isProxy = await checkForProxyAttendance(fingerprint);
+    const isProxy = await checkForProxyAttendance(fingerprint, scannedSessionId); // Pass the ID
 
+    // Send the new record to the database, now with the CORRECT session ID
     const { error } = await db.from('records').insert({
         student_id: studentId,
         roll_no: rollNo,
         fingerprint: fingerprint,
-        session_id: currentSessionId
+        session_id: scannedSessionId // Use the ID from the QR code
     });
 
     if (error) {
@@ -209,11 +226,12 @@ async function handleScanResult(data) {
     }
 }
 
-async function checkForProxyAttendance(fingerprint) {
+// *** MODIFIED FUNCTION SIGNATURE ***
+async function checkForProxyAttendance(fingerprint, sessionId) {
     const { data, error } = await db
         .from('records')
         .select()
-        .eq('session_id', currentSessionId)
+        .eq('session_id', sessionId) // Use the passed-in ID
         .eq('fingerprint', fingerprint);
     
     if (error) {
@@ -229,7 +247,23 @@ async function checkForProxyAttendance(fingerprint) {
 scanBtn.addEventListener('click', startScanner);
 manualEntryLink.addEventListener('click', (e) => { e.preventDefault(); manualEntryContainer.style.display = 'block'; manualEntryLink.style.display = 'none'; });
 
-function generateDynamicQrCode() { const qrData = `CS101-ATTENDANCE-${Date.now()}`; qrcodeEl.innerHTML = ''; qr = new QRCode(qrcodeEl, { text: qrData, width: 256, height: 256, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H }); startTimer(15, timerEl, "New QR code in"); }
+// *** MODIFIED FUNCTION ***
+function generateDynamicQrCode() { 
+    // The QR code now contains the Session ID and a timestamp, separated by a pipe |
+    const qrData = `${currentSessionId}|${Date.now()}`; 
+    
+    qrcodeEl.innerHTML = ''; 
+    qr = new QRCode(qrcodeEl, { 
+        text: qrData, 
+        width: 256, 
+        height: 256, 
+        colorDark: "#000000", 
+        colorLight: "#ffffff", 
+        correctLevel: QRCode.CorrectLevel.H 
+    }); 
+    startTimer(15, timerEl, "New QR code in"); 
+}
+
 function generateNumericCode() { const code = Math.floor(100000 + Math.random() * 900000); currentAlphanumericCode = code.toString(); alphanumericCodeEl.textContent = `${code.toString().substring(0, 3)} - ${code.toString().substring(3, 6)}`; startTimer(30, alphanumericTimerEl, "New code in"); }
 
 function startTimer(duration, element, text) {
