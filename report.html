@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Attendance Report</title>
+    <!-- We can use the same style sheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Live Attendance Report</h1>
+        <p>This page shows all students who successfully marked their attendance.</p>
+        
+        <div class="summary-details">
+            <p><strong>Total Present:</strong> <span id="total-present">...</span></p>
+        </div>
+
+        <div class="absent-list">
+            <h3>Present Roll Numbers:</h3>
+            <p id="loading-message">Fetching records from the database...</p>
+            <ul id="present-list">
+                <!-- Roll numbers will be added here by JavaScript -->
+            </ul>
+        </div>
+        <a href="index.html" class="back-btn" style="text-decoration: none;">Back to Main App</a>
+    </div>
+
+    <!-- *** Add the Supabase Library Script *** -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- *** We will create this new JS file next *** -->
+    <script src="report.js"></script>
+</body>
+</html>

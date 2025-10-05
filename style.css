@@ -9,11 +9,9 @@ body {
     margin: 0;
     color: #333;
 }
-
 #manual-entry-link {
     display: none; /* Hide for the live trial */
 }
-
 .container {
     background: white;
     padding: 30px;
@@ -216,5 +214,21 @@ input[type="number"] {
 #copy-report-btn {
     background-color: #6c757d;
     margin-bottom: 10px;
+}
 
+
+/* Add this to the bottom of style.css */
+#present-list {
+    list-style-type: none;
+    padding: 0;
+    text-align: left;
+}
+
+#present-list li {
+    background-color: #e9f5ff;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    font-weight: 500;
+    border: 1px solid #cce7ff;
 }
