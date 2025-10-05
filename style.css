@@ -1,3 +1,4 @@
+/* --- Base and Layout --- */
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     display: flex;
@@ -19,6 +20,7 @@ body {
     text-align: center;
 }
 
+/* --- View Transitions --- */
 .view {
     display: none;
 }
@@ -33,15 +35,35 @@ body {
     to { opacity: 1; transform: scale(1); }
 }
 
+/* --- Typography --- */
 h1, h2 {
     color: #1c1e21;
+    margin-top: 0;
 }
 
 p {
     color: #606770;
     margin-bottom: 20px;
+    line-height: 1.5;
 }
 
+a {
+    color: #1877f2;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid #e0e0e0;
+    margin: 20px 0;
+}
+
+/* --- Buttons and Forms --- */
 button {
     width: 100%;
     padding: 12px;
@@ -53,42 +75,66 @@ button {
     font-weight: bold;
     cursor: pointer;
     margin-top: 10px;
-    transition: background-color 0.3s;
+    transition: background-color 0.3s, transform 0.2s;
 }
 
 button:hover {
     background-color: #166fe5;
 }
 
+button:active {
+    transform: scale(0.98);
+}
+
 button.back-btn {
     background-color: #6c757d;
-    margin-top: 20px;
 }
 
 button.back-btn:hover {
     background-color: #5a6268;
 }
 
-#qrcode-container {
+input[type="text"],
+input[type="number"] {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+    margin-bottom: 10px;
+    box-sizing: border-box; /* Important for consistent sizing */
+}
+
+/* --- Teacher View Specifics --- */
+#qrcode-container,
+#alphanumeric-container {
     margin: 20px auto;
     padding: 10px;
     border: 1px solid #ddd;
     border-radius: 8px;
-    display: none;
 }
 
 #qrcode {
     width: 256px;
     height: 256px;
-    margin: 0 auto;
+    margin: 10px auto;
 }
 
-#timer {
+#timer,
+#alphanumeric-timer {
     font-size: 14px;
     color: #ef4444;
     font-weight: bold;
+    min-height: 20px;
 }
 
+#alphanumeric-code {
+    font-size: 2.5em;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+/* --- Student View Specifics --- */
 #scanner-container {
     position: relative;
     width: 100%;
@@ -97,7 +143,6 @@ button.back-btn:hover {
     border: 2px solid #ddd;
     border-radius: 8px;
     overflow: hidden;
-    display: none;
 }
 
 #scanner-video {
@@ -106,11 +151,65 @@ button.back-btn:hover {
     display: block;
 }
 
+#logged-in-student {
+    font-size: 1.1em;
+    color: #333;
+    padding: 10px;
+    background-color: #e9f5ff;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
 #scan-result {
     font-weight: bold;
     margin-top: 15px;
     min-height: 20px;
+    word-wrap: break-word; /* Prevents long messages from overflowing */
 }
 
 .result-success { color: #10b981; }
 .result-error { color: #ef4444; }
+
+
+/* --- NEW: Summary View Specifics --- */
+.summary-details {
+    text-align: left;
+    margin-bottom: 20px;
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+}
+
+.summary-details p {
+    margin: 8px 0;
+    font-size: 16px;
+    color: #333;
+    display: flex;
+    justify-content: space-between;
+}
+
+.absent-list {
+    text-align: left;
+    margin-bottom: 25px;
+}
+
+.absent-list h3 {
+    margin-bottom: 10px;
+    color: #1c1e21;
+}
+
+#summary-absent-list {
+    font-weight: bold;
+    font-size: 18px;
+    color: #ef4444; /* Red color for absentees */
+    word-wrap: break-word;
+    background-color: #fff0f0;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+#copy-report-btn {
+    background-color: #6c757d;
+    margin-bottom: 10px;
+}

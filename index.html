@@ -4,11 +4,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Code Attendance</title>
+    <title>QuickAttend</title>
     <link rel="stylesheet" href="style.css">
-      <!-- Add these two lines for PWA functionality -->
+    
+    <!-- PWA functionality -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1877f2">
+    <!-- Splash screen for iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 
 <body>
@@ -17,8 +21,8 @@
         <!-- Home screen to choose role -->
         <div id="home-view" class="view active">
             <h1>QuickAttend</h1>
-            <p>The fastest way to take attendance.</p>
-            <button id="teacher-btn">I am a Teacher</button>
+            <p>Live Attendance Trial</p>
+            <button id="teacher-btn">I am the Teacher</button>
             <button id="student-btn">I am a Student</button>
         </div>
 
@@ -26,53 +30,79 @@
         <div id="teacher-view" class="view">
             <h2>Teacher Dashboard</h2>
             <p>Project this screen for students to scan.</p>
-            <div id="qrcode-container">
+            <div id="qrcode-container" style="display: none;">
                 <div id="qrcode"></div>
-                <p id="timer">New QR code in 15 seconds...</p>
+                <p id="timer"></p>
             </div>
             <div id="alphanumeric-container" style="display: none;">
                 <h2 id="alphanumeric-code"></h2>
                 <p id="alphanumeric-timer"></p>
             </div>
             <button id="start-session-btn">Start Attendance Session</button>
-            <button id="fallback-btn" style="display:none; background-color: #f59e0b;">Projector Broken?</button>
+            <button id="fallback-btn" style="display:none; background-color: #f59e0b;">Use Numeric Code Fallback</button>
+            <button id="end-session-btn" style="display: none; background-color: #10b981;">End Session & View Report</button>
+            <button class="back-btn">Go Back</button>
         </div>
 
         <!-- Student's View -->
         <div id="student-view" class="view">
-            <h2>Student Scanner</h2>
-            <div id="scanner-container">
-                <video id="scanner-video"></video>
-                <div class="scanner-overlay"></div>
+            <!-- Student Login Screen -->
+            <div id="student-login-view">
+                <h2>Student Login</h2>
+                <p>Please enter your class Roll Number to continue.</p>
+                <input type="number" id="student-roll-input" placeholder="Enter Your Roll Number (1-78)">
+                <button id="student-login-btn">Log In</button>
+                 <button class="back-btn" style="margin-top:20px;">Go Back</button>
             </div>
-
-            <button id="scan-btn">Scan QR Code</button>
-            <p>
-                <a href="#" id="manual-entry-link">Projector not working? Enter code manually.</a>
-            </p>
-            <div id="manual-entry-container" style="display: none;">
-                <input type="text" id="manual-code-input" placeholder="e.g., WOLF74LION">
-                <button id="submit-code-btn">Submit Code</button>
+            
+            <!-- Student Dashboard (hidden until login) -->
+            <div id="student-dashboard" style="display: none;">
+                <h2 id="logged-in-student"></h2>
+                <div id="scanner-container" style="display: none;">
+                     <video id="scanner-video"></video>
+                </div>
+                <button id="scan-btn">Scan QR Code</button>
+                <p><a href="#" id="manual-entry-link">Enter code manually</a></p>
+                <div id="manual-entry-container" style="display: none;">
+                    <input type="number" id="manual-code-input" placeholder="e.g., 123456">
+                    <button id="submit-code-btn">Submit Code</button>
+                </div>
+                <p id="scan-result"></p>
             </div>
-            <p id="scan-result"></p>
-            <button class="back-btn">Go Back</button>
+        </div>
 
-
+        <!-- Teacher's Session Summary View -->
+        <div id="summary-view" class="view">
+            <h2>Session Summary</h2>
+            <div class="summary-details">
+                <p><strong>Subject:</strong> <span id="summary-subject"></span></p>
+                <p><strong>Date:</strong> <span id="summary-date"></span></p>
+                <p><strong>Time:</strong> <span id="summary-time"></span></p>
+                <hr>
+                <p><strong>Total Present:</strong> <span id="summary-present"></span></p>
+                <p><strong>Total Absent:</strong> <span id="summary-absent"></span></p>
+            </div>
+            <div class="absent-list">
+                <h3>Absent Roll Numbers:</h3>
+                <p id="summary-absent-list">None</p>
+            </div>
+            <button id="copy-report-btn">Copy Absent List</button>
+            <button id="new-session-btn" class="back-btn">Start New Session</button>
         </div>
     </div>
 
-    <!-- QR Code Generation Library -->
+    <!-- External Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-    <!-- QR Code Scanning Library -->
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 
+    <!-- Your Application Logic -->
     <script src="script.js"></script>
 
-  <!-- Add this script at the end to register the service worker -->
+    <!-- PWA Service Worker Registration -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').then(registration => {
+          navigator.serviceWorker.register('/quick-attend-live/sw.js', { scope: '/quick-attend-live/' }).then(registration => {
             console.log('ServiceWorker registration successful with scope: ', registration.scope);
           }, err => {
             console.log('ServiceWorker registration failed: ', err);
@@ -82,5 +112,4 @@
     </script>
 
 </body>
-
 </html>
